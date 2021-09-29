@@ -2,7 +2,7 @@
  * File              : run.C
  * Author            : Anton Riedel <anton.riedel@tum.de>
  * Date              : 01.06.2021
- * Last Modified Date: 27.09.2021
+ * Last Modified Date: 29.09.2021
  * Last Modified By  : Anton Riedel <anton.riedel@tum.de>
  */
 
@@ -37,7 +37,7 @@ Int_t run() {
 
   formula += ")";
 
-  std::cout << formula << std::endl;
+  // std::cout << formula << std::endl;
 
   Double_t phi0 = 0;
   Double_t phi1 = TMath::TwoPi();
@@ -188,6 +188,29 @@ Int_t run() {
   taskNUAWW->SetWeightHistogram(kPT, WeightPt);
   taskNUAWW->SetWeightHistogram(kETA, WeightEta);
 
+  // add all tasks to the analysis manager in a loop
+  std::vector<AliAnalysisTaskAR *> tasks = {taskUA, taskNUA, taskNUAWW};
+
+  // connect to some output to silence error messages
+  AliAnalysisManager *mgr = new AliAnalysisManager("FlowAnalysisManager");
+  TString OutputFile("AnalysisResults.root:AnalysisResults");
+  // AliAnalysisDataContainer *cinput = nullptr;
+  AliAnalysisDataContainer *coutput = nullptr;
+
+  // loop over all tasks
+  for (auto T : tasks) {
+    mgr->AddTask(T);
+    cout << "Added to manager: " << T->GetName() << endl;
+    // cinput = mgr->GetCommonInputContainer();
+    coutput =
+        mgr->CreateContainer(T->GetName(), TList::Class(),
+                             AliAnalysisManager::kOutputContainer, OutputFile);
+    // mgr->ConnectInput(T, 0, cinput);
+    mgr->ConnectOutput(T, 1, coutput);
+  }
+
+  mgr->InitAnalysis();
+
   // run analysis
   taskUA->UserCreateOutputObjects();
   taskNUA->UserCreateOutputObjects();
@@ -227,61 +250,27 @@ Int_t run() {
   taskNUAWW->GetTrackControlHistogram(kSIM, kPHI, kAFTER)->Write();
   taskNUAWW->GetTrackControlHistogram(kSIM, kETA, kAFTER)->Write();
 
-  TList *outputList1 = taskUA->GetFinalResultProfilesList();
-  TList *outputList2 = taskNUA->GetFinalResultProfilesList();
-  TList *outputList3 = taskNUAWW->GetFinalResultProfilesList();
+  // TList *outputList1 = taskUA->GetFinalResultProfilesList();
+  // TList *outputList2 = taskNUA->GetFinalResultProfilesList();
+  // TList *outputList3 = taskNUAWW->GetFinalResultProfilesList();
   // outputList3->Write();
 
-  file->Close();
-
   std::vector<Double_t> corValueUA;
+  taskUA->GetCorrelatorValues(&corValueUA);
   std::vector<Double_t> corValueNUA;
+  taskNUA->GetCorrelatorValues(&corValueNUA);
   std::vector<Double_t> corValueNUAWW;
-
-  TList *list;
-  for (auto List : *outputList1) {
-    list = dynamic_cast<TList *>(List);
-    corValueUA.push_back(
-        dynamic_cast<TProfile *>(list->At(0))->GetBinContent(1));
-  }
-  for (auto List : *outputList2) {
-    list = dynamic_cast<TList *>(List);
-    corValueNUA.push_back(
-        dynamic_cast<TProfile *>(list->At(0))->GetBinContent(1));
-  }
-  for (auto List : *outputList3) {
-    list = dynamic_cast<TList *>(List);
-    corValueNUAWW.push_back(
-        dynamic_cast<TProfile *>(list->At(0))->GetBinContent(1));
-  }
+  taskNUAWW->GetCorrelatorValues(&corValueNUAWW);
 
   for (std::size_t i = 0; i < corValueUA.size(); i++) {
     std::cout << "####################" << std::endl;
-    std::cout << "Theory:" << theoryValue.at(i) << std::endl;
-    std::cout << "Uniform:" << corValueUA.at(i) << std::endl;
-    std::cout << "Non-Uniform:" << corValueNUA.at(i) << std::endl;
-    std::cout << "Non-Uniform WW:" << corValueNUAWW.at(i) << std::endl;
+    std::cout << "Theory:\t\t" << theoryValue.at(i) << std::endl;
+    std::cout << "Uniform:\t" << corValueUA.at(i) << std::endl;
+    std::cout << "Non-Uniform:\t" << corValueNUA.at(i) << std::endl;
+    std::cout << "Non-Uniform WW:\t" << corValueNUAWW.at(i) << std::endl;
     std::cout << "####################" << std::endl;
   }
 
-  // std::vector<Double_t> X(corValueUA.size());
-  // std::iota(std::begin(X), std::end(X), 1);
-
-  // // TGraph *theory = new TGraph(N, X, TheoryValues);
-  // TGraph *MCUniform = new TGraph(Int_t(X.size()), X.data(),
-  // corValueUA.data()); TGraph *MCNonUniform =
-  //     new TGraph(Int_t(X.size()), X.data(), corValueNUA.data());
-
-  // TH1F *hr = c->DrawFrame(0, -0.8, 7, 1);
-  // hr->GetXaxis()->Set(N, 0, N);
-  // for (int i = 0; i < N; ++i) {
-  //   hr->GetXaxis()->SetBinLabel(i + 1, Form("#LT#LT%d#GT#GT", i + 2));
-  // }
-  // hr->GetYaxis()->SetTitle("#LT#LTk#GT#GT/10^{-k}");
-
-  // MCUniform->Draw();
-  // MCNonUniform->Draw("SAME");
-  // c->SaveAs("result.pdf");
-
+  file->Close();
   return 0;
 }
