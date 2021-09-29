@@ -157,7 +157,7 @@ Int_t run() {
   AliAnalysisTaskAR *taskUA =
       new AliAnalysisTaskAR("UniformAcceptance", kFALSE);
   taskUA->SetMCOnTheFly(kTRUE);
-  taskUA->SetUseCustomSeed(Seed);
+  taskUA->SetCustomSeed(Seed);
   taskUA->SetCorrelators(correlators);
   taskUA->SetTrackControlHistogramBinning(kPT, binsPt, pt0, pt1);
   taskUA->SetTrackControlHistogramBinning(kPHI, binsPhi, phi0, phi1);
